@@ -3,9 +3,10 @@ import { cookies } from 'next/headers'
 
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies()
+  const clean = (v: string | undefined) => (v ?? '').replace(/﻿/g, '').trim()
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    clean(process.env.NEXT_PUBLIC_SUPABASE_URL),
+    clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
     {
       cookies: {
         getAll() { return cookieStore.getAll() },

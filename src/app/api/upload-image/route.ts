@@ -29,9 +29,10 @@ export async function POST(request: NextRequest) {
   const file = formData.get('file') as File | null
   if (!file) return NextResponse.json({ error: 'Sin archivo' }, { status: 400 })
 
+  const clean = (v: string | undefined) => (v ?? '').replace(/﻿/g, '').trim()
   const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    clean(process.env.NEXT_PUBLIC_SUPABASE_URL),
+    clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
   )
 
   const path = `${Date.now()}.jpg`
