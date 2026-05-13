@@ -10,7 +10,7 @@ export default function LogoImage({ className = '', size = 'md' }: { className?:
 
   if (error) {
     return (
-      <div className={`${dims} bg-[#F5DEB3] rounded-full flex items-center justify-center flex-shrink-0 ${className}`}>
+      <div className={`${dims} bg-[#F5DEB3] rounded-full flex items-center justify-center shrink-0 ${className}`}>
         <span className={`text-[#5C2D0E] font-bold ${text}`}>TE</span>
       </div>
     )
@@ -18,9 +18,9 @@ export default function LogoImage({ className = '', size = 'md' }: { className?:
 
   return (
     <img
-      src="/logo.png"
+      src="/logo.jpeg"
       alt="Tía Elena"
-      className={`${dims} rounded-full object-cover flex-shrink-0 ${className}`}
+      className={`${dims} rounded-full object-cover shrink-0 ${className}`}
       onError={() => setError(true)}
     />
   )
