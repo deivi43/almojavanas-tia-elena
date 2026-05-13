@@ -60,61 +60,79 @@ export default function ProductsPage() {
         canvas.height = height
         canvas.getContext('2d')!.drawImage(img, 0, 0, width, height)
         URL.revokeObjectURL(objUrl)
-        canvas.toBlob((b) => b ? resolve(b) : reject(new Error('canvas error')), 'image/jpeg', 0.85)
+        canvas.toBlob((b) => b ? resolve(b) : reject(new Error('canvas')), 'image/jpeg', 0.85)
       }
-      img.onerror = () => { URL.revokeObjectURL(objUrl); reject(new Error('load error')) }
+      img.onerror = () => { URL.revokeObjectURL(objUrl); reject(new Error('load')) }
       img.src = objUrl
     })
 
   const uploadImage = async (file: File): Promise<string | null> => {
     const path = `${Date.now()}.jpg`
     let blob: Blob
-    try { blob = await toJpegBlob(file) } catch { blob = file }
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/product-images/${path}`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-          'Content-Type': 'image/jpeg',
-          'x-upsert': 'true',
-        },
-        body: blob,
+    try {
+      blob = await Promise.race([
+        toJpegBlob(file),
+        new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout canvas')), 12000)),
+      ])
+    } catch {
+      blob = file
+    }
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 30000)
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/product-images/${path}`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+            'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            'Content-Type': 'image/jpeg',
+            'x-upsert': 'true',
+          },
+          body: blob,
+          signal: controller.signal,
+        }
+      )
+      clearTimeout(timer)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        setSaveError(`Error al subir imagen: ${err.message ?? res.statusText}`)
+        return null
       }
-    )
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      setSaveError(`Error al subir imagen: ${err.message ?? res.statusText}`)
+      return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${path}`
+    } catch (e) {
+      clearTimeout(timer)
+      setSaveError(`Error al subir imagen: ${e instanceof Error ? e.message : 'error de red'}`)
       return null
     }
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${path}`
   }
 
   const save = async () => {
     if (!form.name || !form.price) return
     setSaving(true)
     setSaveError(null)
-    let image_url: string | null = imagePreview && !imageFile ? imagePreview : null
-    if (imageFile) {
-      const uploaded = await uploadImage(imageFile)
-      if (!uploaded && imageFile) {
-        setSaving(false)
-        return
+    try {
+      let image_url: string | null = imagePreview && !imageFile ? imagePreview : null
+      if (imageFile) {
+        image_url = await uploadImage(imageFile)
+        if (image_url === null) return
       }
-      image_url = uploaded
+      const payload = { name: form.name, description: form.description || null, price: parseFloat(form.price), image_url, available: form.available }
+      if (modal === 'create') {
+        const { error } = await supabase.from('products').insert(payload)
+        if (error) { setSaveError(`Error al guardar: ${error.message}`); return }
+      } else if (editId) {
+        const { error } = await supabase.from('products').update(payload).eq('id', editId)
+        if (error) { setSaveError(`Error al guardar: ${error.message}`); return }
+      }
+      closeModal()
+      load()
+    } catch (e) {
+      setSaveError(`Error inesperado: ${e instanceof Error ? e.message : 'intenta de nuevo'}`)
+    } finally {
+      setSaving(false)
     }
-    const payload = { name: form.name, description: form.description || null, price: parseFloat(form.price), image_url, available: form.available }
-    if (modal === 'create') {
-      const { error } = await supabase.from('products').insert(payload)
-      if (error) { setSaveError(`Error al guardar: ${error.message}`); setSaving(false); return }
-    } else if (editId) {
-      const { error } = await supabase.from('products').update(payload).eq('id', editId)
-      if (error) { setSaveError(`Error al guardar: ${error.message}`); setSaving(false); return }
-    }
-    setSaving(false)
-    closeModal()
-    load()
   }
 
   const toggleAvailable = async (p: Product) => {
