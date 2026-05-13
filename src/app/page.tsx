@@ -27,10 +27,13 @@ export default async function Home() {
               <p className="text-[#F5DEB3] text-xs">Almojavanas Hechas con Amor</p>
             </div>
           </div>
-          <nav className="hidden md:flex gap-6 text-sm font-medium">
+          <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
             <a href="#productos" className="hover:text-[#F5DEB3] transition-colors">Productos</a>
             <a href="#pedido" className="hover:text-[#F5DEB3] transition-colors">Hacer Pedido</a>
             <a href="#contacto" className="hover:text-[#F5DEB3] transition-colors">Contacto</a>
+            <a href="/admin/login" className="bg-[#F5DEB3] text-[#5C2D0E] font-bold px-4 py-1.5 rounded-full hover:bg-white transition-colors text-xs">
+              Panel Admin
+            </a>
           </nav>
         </div>
       </header>
