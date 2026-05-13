@@ -67,7 +67,6 @@ export default function ProductsPage() {
     })
 
   const uploadImage = async (file: File): Promise<string | null> => {
-    const path = `${Date.now()}.jpg`
     let blob: Blob
     try {
       blob = await Promise.race([
@@ -77,30 +76,20 @@ export default function ProductsPage() {
     } catch {
       blob = file
     }
+    const fd = new FormData()
+    fd.append('file', blob, 'image.jpg')
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), 30000)
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/product-images/${path}`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-            'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            'Content-Type': 'image/jpeg',
-            'x-upsert': 'true',
-          },
-          body: blob,
-          signal: controller.signal,
-        }
-      )
+      const res = await fetch('/api/upload-image', { method: 'POST', body: fd, signal: controller.signal })
       clearTimeout(timer)
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        setSaveError(`Error al subir imagen: ${err.message ?? res.statusText}`)
+        setSaveError(`Error al subir imagen: ${err.error ?? res.statusText}`)
         return null
       }
-      return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${path}`
+      const { url } = await res.json()
+      return url as string
     } catch (e) {
       clearTimeout(timer)
       setSaveError(`Error al subir imagen: ${e instanceof Error ? e.message : 'error de red'}`)
