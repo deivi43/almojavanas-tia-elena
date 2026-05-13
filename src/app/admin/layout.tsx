@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { LayoutDashboard, Package, ShoppingBag, BookOpen, ExternalLink } from 'lucide-react'
+import { LayoutDashboard, Package, ShoppingBag, BookOpen, ExternalLink, LogOut } from 'lucide-react'
+import { logout } from '@/app/admin/actions'
 
 const navLinks = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
@@ -14,7 +15,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Sidebar */}
       <aside className="w-64 bg-[#5C2D0E] text-white flex flex-col min-h-screen">
         <div className="p-6 border-b border-[#7a3d12]">
-          <div className="flex items-center gap-3 mb-1">
+          <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-[#F5DEB3] rounded-full flex items-center justify-center">
               <span className="text-[#5C2D0E] font-bold text-sm">TE</span>
             </div>
@@ -24,6 +25,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           </div>
         </div>
+
         <nav className="flex-1 p-4 space-y-1">
           {navLinks.map(({ href, label, icon: Icon }) => (
             <Link
@@ -36,11 +38,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </Link>
           ))}
         </nav>
-        <div className="p-4 border-t border-[#7a3d12]">
-          <Link href="/" className="flex items-center gap-2 text-[#F5DEB3] text-xs hover:text-white transition-colors">
+
+        <div className="p-4 border-t border-[#7a3d12] space-y-2">
+          <Link href="/" className="flex items-center gap-2 text-[#F5DEB3] text-xs hover:text-white transition-colors px-2 py-1">
             <ExternalLink size={14} />
             Ver sitio público
           </Link>
+          <form action={logout}>
+            <button
+              type="submit"
+              className="flex items-center gap-2 text-[#F5DEB3] text-xs hover:text-red-300 transition-colors w-full px-2 py-1"
+            >
+              <LogOut size={14} />
+              Cerrar sesión
+            </button>
+          </form>
         </div>
       </aside>
 
