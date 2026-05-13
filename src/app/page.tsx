@@ -1,5 +1,6 @@
 import { supabase, Product } from '@/lib/supabase'
 import OrderForm from '@/components/OrderForm'
+import LogoImage from '@/components/LogoImage'
 import { Phone, MapPin, Clock, Star } from 'lucide-react'
 
 async function getProducts(): Promise<Product[]> {
@@ -18,14 +19,12 @@ export default async function Home() {
     <main className="min-h-screen bg-[#fefdf8]">
       {/* Header */}
       <header className="bg-[#5C2D0E] text-white shadow-lg">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-[#F5DEB3] rounded-full flex items-center justify-center">
-              <span className="text-[#5C2D0E] font-bold text-lg">TE</span>
-            </div>
+            <LogoImage size="md" className="border-2 border-[#F5DEB3] shadow-md" />
             <div>
               <h1 className="text-xl font-bold tracking-wide">Tía Elena</h1>
-              <p className="text-[#F5DEB3] text-xs">Almojavanas Artesanales</p>
+              <p className="text-[#F5DEB3] text-xs">Almojavanas Hechas con Amor</p>
             </div>
           </div>
           <nav className="hidden md:flex gap-6 text-sm font-medium">

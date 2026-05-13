@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { login } from '@/app/admin/actions'
+import LogoImage from '@/components/LogoImage'
 import { Lock, Eye, EyeOff } from 'lucide-react'
 
 export default function LoginPage() {
@@ -26,8 +27,8 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-[#5C2D0E] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <span className="text-[#F5DEB3] font-bold text-2xl">TE</span>
+          <div className="flex justify-center mb-4">
+            <LogoImage size="lg" className="border-4 border-[#5C2D0E] shadow-xl" />
           </div>
           <h1 className="text-2xl font-bold text-[#5C2D0E]">Tía Elena</h1>
           <p className="text-gray-500 text-sm mt-1">Panel de Administración</p>

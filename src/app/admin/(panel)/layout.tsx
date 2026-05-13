@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { LayoutDashboard, Package, ShoppingBag, BookOpen, ExternalLink, LogOut } from 'lucide-react'
 import { logout } from '@/app/admin/actions'
+import LogoImage from '@/components/LogoImage'
 
 const navLinks = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
@@ -14,11 +15,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="min-h-screen flex bg-gray-50">
       {/* Sidebar */}
       <aside className="w-64 bg-[#5C2D0E] text-white flex flex-col min-h-screen">
-        <div className="p-6 border-b border-[#7a3d12]">
+        <div className="p-5 border-b border-[#7a3d12]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#F5DEB3] rounded-full flex items-center justify-center">
-              <span className="text-[#5C2D0E] font-bold text-sm">TE</span>
-            </div>
+            <LogoImage size="sm" className="border-2 border-[#F5DEB3]" />
             <div>
               <p className="font-bold text-sm">Tía Elena</p>
               <p className="text-[#F5DEB3] text-xs">Panel de Control</p>

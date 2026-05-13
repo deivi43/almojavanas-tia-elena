@@ -1,19 +1,22 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase, Product } from '@/lib/supabase'
-import { Plus, Pencil, Trash2, X, Check, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Check, ToggleLeft, ToggleRight, Upload, ImageIcon } from 'lucide-react'
 
-const empty = { name: '', description: '', price: '', image_url: '', available: true }
+const empty = { name: '', description: '', price: '', available: true }
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<'create' | 'edit' | null>(null)
   const [form, setForm] = useState<typeof empty>(empty)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [editId, setEditId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const load = async () => {
     const { data } = await supabase.from('products').select('*').order('created_at', { ascending: false })
@@ -23,14 +26,40 @@ export default function ProductsPage() {
 
   useEffect(() => { load() }, [])
 
-  const openCreate = () => { setForm(empty); setEditId(null); setModal('create') }
-  const openEdit = (p: Product) => { setForm({ name: p.name, description: p.description ?? '', price: String(p.price), image_url: p.image_url ?? '', available: p.available }); setEditId(p.id); setModal('edit') }
-  const closeModal = () => { setModal(null); setEditId(null) }
+  const openCreate = () => {
+    setForm(empty); setEditId(null); setImageFile(null); setImagePreview(null); setModal('create')
+  }
+  const openEdit = (p: Product) => {
+    setForm({ name: p.name, description: p.description ?? '', price: String(p.price), available: p.available })
+    setEditId(p.id)
+    setImageFile(null)
+    setImagePreview(p.image_url ?? null)
+    setModal('edit')
+  }
+  const closeModal = () => { setModal(null); setEditId(null); setImageFile(null); setImagePreview(null) }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+  }
+
+  const uploadImage = async (file: File): Promise<string | null> => {
+    const ext = file.name.split('.').pop()
+    const path = `${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('product-images').upload(path, file, { upsert: true })
+    if (error) return null
+    const { data } = supabase.storage.from('product-images').getPublicUrl(path)
+    return data.publicUrl
+  }
 
   const save = async () => {
     if (!form.name || !form.price) return
     setSaving(true)
-    const payload = { name: form.name, description: form.description, price: parseFloat(form.price), image_url: form.image_url || null, available: form.available }
+    let image_url: string | null = imagePreview && !imageFile ? imagePreview : null
+    if (imageFile) image_url = await uploadImage(imageFile)
+    const payload = { name: form.name, description: form.description, price: parseFloat(form.price), image_url, available: form.available }
     if (modal === 'create') {
       await supabase.from('products').insert(payload)
     } else if (editId) {
@@ -72,6 +101,7 @@ export default function ProductsPage() {
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
+                <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Imagen</th>
                 <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Producto</th>
                 <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Descripción</th>
                 <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Precio</th>
@@ -81,9 +111,17 @@ export default function ProductsPage() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {products.length === 0 ? (
-                <tr><td colSpan={5} className="text-center py-12 text-gray-400">No hay productos. Crea el primero.</td></tr>
+                <tr><td colSpan={6} className="text-center py-12 text-gray-400">No hay productos. Crea el primero.</td></tr>
               ) : products.map((p) => (
                 <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="w-14 h-14 rounded-xl overflow-hidden bg-[#f5e6c8] flex items-center justify-center">
+                      {p.image_url
+                        ? <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
+                        : <ImageIcon size={20} className="text-[#8B4513] opacity-50" />
+                      }
+                    </div>
+                  </td>
                   <td className="px-6 py-4">
                     <p className="font-semibold text-gray-800 text-sm">{p.name}</p>
                   </td>
@@ -121,12 +159,42 @@ export default function ProductsPage() {
       {/* Modal crear/editar */}
       {modal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-bold text-gray-800 text-lg">{modal === 'create' ? 'Nuevo Producto' : 'Editar Producto'}</h2>
               <button onClick={closeModal} className="p-2 rounded-lg hover:bg-gray-100"><X size={18} /></button>
             </div>
             <div className="space-y-4">
+
+              {/* Subida de imagen */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Foto del producto</label>
+                <input ref={fileRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+                <div
+                  onClick={() => fileRef.current?.click()}
+                  className="w-full h-40 border-2 border-dashed border-[#e8d5b0] rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-[#8B4513] hover:bg-[#fef9f0] transition-colors overflow-hidden"
+                >
+                  {imagePreview ? (
+                    <img src={imagePreview} alt="Vista previa" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="text-center p-4">
+                      <Upload className="mx-auto text-[#8B4513] mb-2" size={28} />
+                      <p className="text-sm font-medium text-[#8B4513]">Haz clic para subir una foto</p>
+                      <p className="text-xs text-gray-400 mt-1">JPG, PNG, WEBP · Máx 5MB</p>
+                    </div>
+                  )}
+                </div>
+                {imagePreview && (
+                  <button
+                    type="button"
+                    onClick={() => { setImageFile(null); setImagePreview(null) }}
+                    className="mt-1 text-xs text-red-400 hover:text-red-600"
+                  >
+                    Quitar imagen
+                  </button>
+                )}
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
                 <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -144,12 +212,6 @@ export default function ProductsPage() {
                 <input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })}
                   className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B4513]"
                   placeholder="1500" min="0" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">URL de imagen</label>
-                <input value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B4513]"
-                  placeholder="https://..." />
               </div>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={form.available} onChange={(e) => setForm({ ...form, available: e.target.checked })} className="rounded" />
