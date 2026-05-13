@@ -15,6 +15,7 @@ export default function ProductsPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [editId, setEditId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -27,7 +28,7 @@ export default function ProductsPage() {
   useEffect(() => { load() }, [])
 
   const openCreate = () => {
-    setForm(empty); setEditId(null); setImageFile(null); setImagePreview(null); setModal('create')
+    setForm(empty); setEditId(null); setImageFile(null); setImagePreview(null); setSaveError(null); setModal('create')
   }
   const openEdit = (p: Product) => {
     setForm({ name: p.name, description: p.description ?? '', price: String(p.price), available: p.available })
@@ -36,7 +37,7 @@ export default function ProductsPage() {
     setImagePreview(p.image_url ?? null)
     setModal('edit')
   }
-  const closeModal = () => { setModal(null); setEditId(null); setImageFile(null); setImagePreview(null) }
+  const closeModal = () => { setModal(null); setEditId(null); setImageFile(null); setImagePreview(null); setSaveError(null) }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -49,7 +50,10 @@ export default function ProductsPage() {
     const ext = file.name.split('.').pop()
     const path = `${Date.now()}.${ext}`
     const { error } = await supabase.storage.from('product-images').upload(path, file, { upsert: true })
-    if (error) return null
+    if (error) {
+      setSaveError(`Error al subir imagen: ${error.message}`)
+      return null
+    }
     const { data } = supabase.storage.from('product-images').getPublicUrl(path)
     return data.publicUrl
   }
@@ -57,13 +61,23 @@ export default function ProductsPage() {
   const save = async () => {
     if (!form.name || !form.price) return
     setSaving(true)
+    setSaveError(null)
     let image_url: string | null = imagePreview && !imageFile ? imagePreview : null
-    if (imageFile) image_url = await uploadImage(imageFile)
-    const payload = { name: form.name, description: form.description, price: parseFloat(form.price), image_url, available: form.available }
+    if (imageFile) {
+      const uploaded = await uploadImage(imageFile)
+      if (!uploaded && imageFile) {
+        setSaving(false)
+        return
+      }
+      image_url = uploaded
+    }
+    const payload = { name: form.name, description: form.description || null, price: parseFloat(form.price), image_url, available: form.available }
     if (modal === 'create') {
-      await supabase.from('products').insert(payload)
+      const { error } = await supabase.from('products').insert(payload)
+      if (error) { setSaveError(`Error al guardar: ${error.message}`); setSaving(false); return }
     } else if (editId) {
-      await supabase.from('products').update(payload).eq('id', editId)
+      const { error } = await supabase.from('products').update(payload).eq('id', editId)
+      if (error) { setSaveError(`Error al guardar: ${error.message}`); setSaving(false); return }
     }
     setSaving(false)
     closeModal()
@@ -218,7 +232,10 @@ export default function ProductsPage() {
                 <span className="text-sm text-gray-700">Producto disponible</span>
               </label>
             </div>
-            <div className="flex gap-3 mt-6">
+            {saveError && (
+              <p className="mt-4 text-red-500 text-sm bg-red-50 px-4 py-3 rounded-xl">{saveError}</p>
+            )}
+            <div className="flex gap-3 mt-4">
               <button onClick={closeModal} className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl hover:bg-gray-50 text-sm font-medium">
                 Cancelar
               </button>
