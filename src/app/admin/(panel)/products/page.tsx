@@ -47,9 +47,10 @@ export default function ProductsPage() {
   }
 
   const uploadImage = async (file: File): Promise<string | null> => {
-    const ext = file.name.split('.').pop()
+    const ext = (file.name.split('.').pop() ?? 'jpg').replace(/[^a-zA-Z0-9]/g, '') || 'jpg'
     const path = `${Date.now()}.${ext}`
-    const { error } = await supabase.storage.from('product-images').upload(path, file, { upsert: true })
+    const blob = new Blob([file], { type: file.type })
+    const { error } = await supabase.storage.from('product-images').upload(path, blob, { upsert: true, contentType: file.type })
     if (error) {
       setSaveError(`Error al subir imagen: ${error.message}`)
       return null
