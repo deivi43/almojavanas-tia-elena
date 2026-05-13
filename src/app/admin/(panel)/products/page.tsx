@@ -46,17 +46,49 @@ export default function ProductsPage() {
     setImagePreview(URL.createObjectURL(file))
   }
 
+  const toJpegBlob = (file: File): Promise<Blob> =>
+    new Promise((resolve, reject) => {
+      const img = new Image()
+      const objUrl = URL.createObjectURL(file)
+      img.onload = () => {
+        const MAX = 1200
+        let { width, height } = img
+        if (width > MAX) { height = Math.round((height * MAX) / width); width = MAX }
+        if (height > MAX) { width = Math.round((width * MAX) / height); height = MAX }
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        canvas.getContext('2d')!.drawImage(img, 0, 0, width, height)
+        URL.revokeObjectURL(objUrl)
+        canvas.toBlob((b) => b ? resolve(b) : reject(new Error('canvas error')), 'image/jpeg', 0.85)
+      }
+      img.onerror = () => { URL.revokeObjectURL(objUrl); reject(new Error('load error')) }
+      img.src = objUrl
+    })
+
   const uploadImage = async (file: File): Promise<string | null> => {
-    const ext = (file.name.split('.').pop() ?? 'jpg').replace(/[^a-zA-Z0-9]/g, '') || 'jpg'
-    const path = `${Date.now()}.${ext}`
-    const blob = new Blob([file], { type: file.type })
-    const { error } = await supabase.storage.from('product-images').upload(path, blob, { upsert: true, contentType: file.type })
-    if (error) {
-      setSaveError(`Error al subir imagen: ${error.message}`)
+    const path = `${Date.now()}.jpg`
+    let blob: Blob
+    try { blob = await toJpegBlob(file) } catch { blob = file }
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/product-images/${path}`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          'Content-Type': 'image/jpeg',
+          'x-upsert': 'true',
+        },
+        body: blob,
+      }
+    )
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      setSaveError(`Error al subir imagen: ${err.message ?? res.statusText}`)
       return null
     }
-    const { data } = supabase.storage.from('product-images').getPublicUrl(path)
-    return data.publicUrl
+    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${path}`
   }
 
   const save = async () => {
